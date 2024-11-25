@@ -1,5 +1,7 @@
 package com.folau.datasources.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,40 +20,53 @@ import javax.sql.DataSource;
 @EnableTransactionManagement
 @EnableJpaRepositories(
         basePackages = "com.folau.datasources.house.repository", // Repository package for house
-        entityManagerFactoryRef = "houseEntityManagerFactory", // Reference to EntityManagerFactory
-        transactionManagerRef = "houseTransactionManager" // Reference to TransactionManager
+        entityManagerFactoryRef = "houseEntityManagerFactory",   // Reference to EntityManagerFactory
+        transactionManagerRef = "houseTransactionManager"        // Reference to TransactionManager
 )
 public class HouseDataSourceConfig {
 
-    @Primary
+    /**
+     * Configuration for House DataSource Properties
+     */
+//    @Primary
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource.house")
     public DataSourceProperties houseDataSourceProperties() {
         return new DataSourceProperties();
     }
 
-    @Primary
-    @Bean
+    /**
+     * Creates House DataSource based on House DataSource Properties
+     */
+//    @Primary
+    @Bean(name = "houseDataSource")
     public DataSource houseDataSource() {
         return houseDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
-    @Primary
-    @Bean
+    /**
+     * Configures the EntityManagerFactory for the House DataSource
+     */
+//    @Primary
+    @Bean(name = "houseEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean houseEntityManagerFactory() {
         LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
         factory.setDataSource(houseDataSource());
         factory.setPackagesToScan("com.folau.datasources.house.entity"); // Entity package for house
         factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "create");
+
+        // Add JPA properties
+        factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "create"); // Auto-create schema
+        factory.getJpaPropertyMap().put("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect"); // MySQL dialect
         return factory;
     }
 
-    @Primary
-    @Bean
-    public PlatformTransactionManager houseTransactionManager() {
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(houseEntityManagerFactory().getObject());
-        return transactionManager;
+    /**
+     * Configures the TransactionManager for the House DataSource
+     */
+//    @Primary
+    @Bean(name = "houseTransactionManager")
+    public PlatformTransactionManager houseTransactionManager(@Autowired @Qualifier("houseEntityManagerFactory") LocalContainerEntityManagerFactoryBean houseEntityManagerFactory) {
+        return new JpaTransactionManager(houseEntityManagerFactory.getObject());
     }
 }

@@ -1,6 +1,7 @@
 package com.folau.datasources.config;
 
-import org.hibernate.jpa.boot.spi.EntityManagerFactoryBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -17,9 +18,9 @@ import javax.sql.DataSource;
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(
-        basePackages = "com.folau.datasources.lender.repository",
-        entityManagerFactoryRef = "lenderEntityManagerFactory",
-        transactionManagerRef = "lenderTransactionManager"
+        basePackages = "com.folau.datasources.lender.repository", // Repository package for lender
+        entityManagerFactoryRef = "lenderEntityManagerFactory",  // Reference to EntityManagerFactory
+        transactionManagerRef = "lenderTransactionManager"       // Reference to TransactionManager
 )
 public class LenderDataSourceConfig {
 
@@ -29,26 +30,23 @@ public class LenderDataSourceConfig {
         return new DataSourceProperties();
     }
 
-    @Bean
+    @Bean(name = "lenderDataSource")
     public DataSource lenderDataSource() {
         return lenderDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
-    @Bean
+    @Bean(name = "lenderEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean lenderEntityManagerFactory() {
         LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
-        factory.setPackagesToScan("com.folau.datasources.lender.entity");
         factory.setDataSource(lenderDataSource());
+        factory.setPackagesToScan("com.folau.datasources.lender.entity"); // Entity package for lender
         factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "create");
+        factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "create"); // Auto-creation of tables
         return factory;
     }
 
-    @Bean
-    public PlatformTransactionManager lenderTransactionManager() {
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setDataSource(lenderDataSource());
-        return transactionManager;
+    @Bean(name = "lenderTransactionManager")
+    public PlatformTransactionManager lenderTransactionManager(@Autowired @Qualifier("lenderEntityManagerFactory") LocalContainerEntityManagerFactoryBean lenderEntityManagerFactory) {
+        return new JpaTransactionManager(lenderEntityManagerFactory.getObject()); // Link transaction manager to EntityManagerFactory
     }
 }
-
